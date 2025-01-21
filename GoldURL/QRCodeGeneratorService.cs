@@ -5,7 +5,7 @@ using System.IO;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.Configuration;
 
-namespace GoldURL
+namespace QRCodeGenerator
 {
     public class QRCodeGeneratorService
     {
@@ -27,71 +27,71 @@ namespace GoldURL
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"初始化配置時發生錯誤: {ex.Message}");
+                Console.WriteLine($"Error initializing configuration: {ex.Message}");
                 throw;
             }
         }
 
         /// <summary>
-        /// 根據資料表中的指定 GoldURLID 生成 QRCode 圖片並保存為 PNG 檔案。
+        /// Generates a QRCode image based on the specified ID from the database and saves it as a PNG file.
         /// </summary>
-        /// <param name="goldUrlId">資料表中的 GoldURLID</param>
-        public void GenerateQRCode(int goldUrlId)
+        /// <param name="id">The ID from the database</param>
+        public void GenerateQRCode(int id)
         {
             try
             {
-                // 從資料庫中查詢指定 GoldURLID 的資料
-                string fullUrl = GetFullUrlFromDatabase(goldUrlId);
+                // Retrieve data from the database based on the specified ID
+                string fullUrl = GetFullUrlFromDatabase(id);
 
                 if (!string.IsNullOrEmpty(fullUrl))
                 {
-                    // 定義保存路徑
+                    // Define save path
                     string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-                    string folderPath = Path.Combine(desktopPath, "GoldQRCode");
-                    Directory.CreateDirectory(folderPath); // 確保資料夾存在
-                    string savePath = Path.Combine(folderPath, $"QRCode_{goldUrlId}.png"); // 保存圖片的路徑，根據 GoldURLID 命名
+                    string folderPath = Path.Combine(desktopPath, "QRCodeImages");
+                    Directory.CreateDirectory(folderPath); // Ensure the folder exists
+                    string savePath = Path.Combine(folderPath, $"QRCode_{id}.png"); // Save path for the image, named based on the ID
 
-                    // 初始化 QRCode 產生器
+                    // Initialize QRCode generator
                     using (QRCodeGenerator qrGenerator = new QRCodeGenerator())
                     {
-                        // 產生 QRCode 資料
+                        // Generate QRCode data
                         QRCodeData qrCodeData = qrGenerator.CreateQrCode(fullUrl, QRCodeGenerator.ECCLevel.Q);
 
-                        // 使用 PngByteQRCode 生成 QR Code 圖片
+                        // Generate QR Code image using PngByteQRCode
                         PngByteQRCode qrCode = new PngByteQRCode(qrCodeData);
                         byte[] qrCodeImage = qrCode.GetGraphic(20);
 
-                        // 保存 QR Code 圖片到指定路徑
+                        // Save QR Code image to the specified path
                         File.WriteAllBytes(savePath, qrCodeImage);
-                        Console.WriteLine($"QRCode 已成功保存到 {savePath}");
+                        Console.WriteLine($"QRCode successfully saved to {savePath}");
                     }
                 }
                 else
                 {
-                    Console.WriteLine("指定的 GoldURLID 找不到或已使用。");
+                    Console.WriteLine("The specified ID was not found or has already been used.");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"生成 QRCode 時發生錯誤: {ex.Message}");
+                Console.WriteLine($"Error generating QRCode: {ex.Message}");
             }
         }
 
         /// <summary>
-        /// 根據 GoldURLID 從資料庫查詢 FullURL。
+        /// Retrieves the FullURL from the database based on the specified ID.
         /// </summary>
-        /// <param name="goldUrlId">資料表中的 GoldURLID</param>
-        /// <returns>對應的 FullURL 或 null</returns>
-        private string GetFullUrlFromDatabase(int goldUrlId)
+        /// <param name="id">The ID from the database</param>
+        /// <returns>The corresponding FullURL or null</returns>
+        private string GetFullUrlFromDatabase(int id)
         {
             try
             {
-                string query = "SELECT FullURL FROM LineAt_EG_GoldURL WHERE GoldURLID = @GoldURLID AND UsedDate IS NULL"; // 查詢未使用過的 URL
+                string query = "SELECT FullURL FROM YourTable WHERE ID = @ID AND UsedDate IS NULL"; // Query for unused URLs
 
                 using (SqlConnection connection = new SqlConnection(connectionString))
                 {
                     SqlCommand command = new SqlCommand(query, connection);
-                    command.Parameters.AddWithValue("@GoldURLID", goldUrlId);
+                    command.Parameters.AddWithValue("@ID", id);
                     connection.Open();
 
                     var result = command.ExecuteScalar();
@@ -100,7 +100,7 @@ namespace GoldURL
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"從資料庫查詢 FullURL 時發生錯誤: {ex.Message}");
+                Console.WriteLine($"Error retrieving FullURL from database: {ex.Message}");
                 return null;
             }
         }
