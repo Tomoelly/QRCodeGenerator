@@ -14,14 +14,22 @@ namespace GoldURL
 
         public QRCodeGeneratorService()
         {
-            // Build configuration
-            configuration = new ConfigurationBuilder()
-                .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
-                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-                .Build();
+            try
+            {
+                // Build configuration
+                configuration = new ConfigurationBuilder()
+                    .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
+                    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                    .Build();
 
-            // Retrieve connection string
-            connectionString = configuration.GetConnectionString("DatabaseConnection") ?? throw new InvalidOperationException("Connection string 'DatabaseConnection' not found.");
+                // Retrieve connection string
+                connectionString = configuration.GetConnectionString("DatabaseConnection") ?? throw new InvalidOperationException("Connection string 'DatabaseConnection' not found.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"初始化配置時發生錯誤: {ex.Message}");
+                throw;
+            }
         }
 
         /// <summary>
@@ -30,35 +38,42 @@ namespace GoldURL
         /// <param name="goldUrlId">資料表中的 GoldURLID</param>
         public void GenerateQRCode(int goldUrlId)
         {
-            // 從資料庫中查詢指定 GoldURLID 的資料
-            string fullUrl = GetFullUrlFromDatabase(goldUrlId);
-
-            if (!string.IsNullOrEmpty(fullUrl))
+            try
             {
-                // 定義保存路徑
-                string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-                string folderPath = Path.Combine(desktopPath, "GoldQRCode");
-                Directory.CreateDirectory(folderPath); // 確保資料夾存在
-                string savePath = Path.Combine(folderPath, $"QRCode_{goldUrlId}.png"); // 保存圖片的路徑，根據 GoldURLID 命名
+                // 從資料庫中查詢指定 GoldURLID 的資料
+                string fullUrl = GetFullUrlFromDatabase(goldUrlId);
 
-                // 初始化 QRCode 產生器
-                using (QRCodeGenerator qrGenerator = new QRCodeGenerator())
+                if (!string.IsNullOrEmpty(fullUrl))
                 {
-                    // 產生 QRCode 資料
-                    QRCodeData qrCodeData = qrGenerator.CreateQrCode(fullUrl, QRCodeGenerator.ECCLevel.Q);
+                    // 定義保存路徑
+                    string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+                    string folderPath = Path.Combine(desktopPath, "GoldQRCode");
+                    Directory.CreateDirectory(folderPath); // 確保資料夾存在
+                    string savePath = Path.Combine(folderPath, $"QRCode_{goldUrlId}.png"); // 保存圖片的路徑，根據 GoldURLID 命名
 
-                    // 使用 PngByteQRCode 生成 QR Code 圖片
-                    PngByteQRCode qrCode = new PngByteQRCode(qrCodeData);
-                    byte[] qrCodeImage = qrCode.GetGraphic(20);
+                    // 初始化 QRCode 產生器
+                    using (QRCodeGenerator qrGenerator = new QRCodeGenerator())
+                    {
+                        // 產生 QRCode 資料
+                        QRCodeData qrCodeData = qrGenerator.CreateQrCode(fullUrl, QRCodeGenerator.ECCLevel.Q);
 
-                    // 保存 QR Code 圖片到指定路徑
-                    File.WriteAllBytes(savePath, qrCodeImage);
-                    Console.WriteLine($"QRCode 已成功保存到 {savePath}");
+                        // 使用 PngByteQRCode 生成 QR Code 圖片
+                        PngByteQRCode qrCode = new PngByteQRCode(qrCodeData);
+                        byte[] qrCodeImage = qrCode.GetGraphic(20);
+
+                        // 保存 QR Code 圖片到指定路徑
+                        File.WriteAllBytes(savePath, qrCodeImage);
+                        Console.WriteLine($"QRCode 已成功保存到 {savePath}");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("指定的 GoldURLID 找不到或已使用。");
                 }
             }
-            else
+            catch (Exception ex)
             {
-                Console.WriteLine("指定的 GoldURLID 找不到或已使用。");
+                Console.WriteLine($"生成 QRCode 時發生錯誤: {ex.Message}");
             }
         }
 
@@ -69,16 +84,24 @@ namespace GoldURL
         /// <returns>對應的 FullURL 或 null</returns>
         private string GetFullUrlFromDatabase(int goldUrlId)
         {
-            string query = "SELECT FullURL FROM LineAt_EG_GoldURL WHERE GoldURLID = @GoldURLID AND UsedDate IS NULL"; // 查詢未使用過的 URL
-
-            using (SqlConnection connection = new SqlConnection(connectionString))
+            try
             {
-                SqlCommand command = new SqlCommand(query, connection);
-                command.Parameters.AddWithValue("@GoldURLID", goldUrlId);
-                connection.Open();
+                string query = "SELECT FullURL FROM LineAt_EG_GoldURL WHERE GoldURLID = @GoldURLID AND UsedDate IS NULL"; // 查詢未使用過的 URL
 
-                var result = command.ExecuteScalar();
-                return result?.ToString();
+                using (SqlConnection connection = new SqlConnection(connectionString))
+                {
+                    SqlCommand command = new SqlCommand(query, connection);
+                    command.Parameters.AddWithValue("@GoldURLID", goldUrlId);
+                    connection.Open();
+
+                    var result = command.ExecuteScalar();
+                    return result?.ToString();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"從資料庫查詢 FullURL 時發生錯誤: {ex.Message}");
+                return null;
             }
         }
     }
