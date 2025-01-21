@@ -2,12 +2,27 @@
 using System;
 using System.Data.SqlClient;
 using System.IO;
+using Microsoft.Extensions.Configuration.Json;
+using Microsoft.Extensions.Configuration;
 
 namespace GoldURL
 {
     public class QRCodeGeneratorService
     {
-        private string connectionString = "Server=192.168.1.41;Database=EYEDigital;User ID=sa;Password=Uni23643776;TrustServerCertificate=true;Trusted_Connection=True;Integrated Security=False"; // 你的資料庫連接字串
+        private readonly IConfiguration configuration;
+        private readonly string connectionString;
+
+        public QRCodeGeneratorService()
+        {
+            // Build configuration
+            configuration = new ConfigurationBuilder()
+                .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                .Build();
+
+            // Retrieve connection string
+            connectionString = configuration.GetConnectionString("DatabaseConnection") ?? throw new InvalidOperationException("Connection string 'DatabaseConnection' not found.");
+        }
 
         /// <summary>
         /// 根據資料表中的指定 GoldURLID 生成 QRCode 圖片並保存為 PNG 檔案。
